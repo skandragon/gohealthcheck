@@ -1,5 +1,7 @@
 name: Push to go package system on tag
 
+
+
 on:
   push:
     tags:
@@ -9,5 +11,9 @@ jobs:
   prod:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: false
       - name: prod proxy
         run: GOPROXY=proxy.golang.org go list -m github.com/${{ github.repository }}@${{ github.ref_name }}
