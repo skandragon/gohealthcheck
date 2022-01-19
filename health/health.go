@@ -111,6 +111,7 @@ func (h *Health) runChecker(checker *healthIndicator) {
 // RunCheckers runs all the health checks, one every frequency/count seconds.
 func (h *Health) RunCheckers(frequency int) {
 	nextIndex := 0
+	h.run = true
 
 	h.Lock()
 	count := len(h.Checks) + 1 // ensure we are at least 1
