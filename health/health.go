@@ -19,6 +19,7 @@ package health
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -198,6 +199,8 @@ func (hc *httpChecker) Check() error {
 	if err != nil {
 		return err
 	}
+	io.Copy(io.Discard, resp.Body)
+	defer resp.Body.Close()
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		return nil
 	}
