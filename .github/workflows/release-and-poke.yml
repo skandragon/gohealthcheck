@@ -1,0 +1,13 @@
+name: Push to go package system on tag
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+*
+
+jobs:
+  prod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: prod proxy
+        run: GOPROXY=proxy.golang.org go list -m github.com/${{GITHUB_REPOSITORY}}@${{GITHUB_REF_NAME}}
