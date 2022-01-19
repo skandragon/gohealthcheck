@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: prod proxy
-        run: GOPROXY=proxy.golang.org go list -m github.com/${{GITHUB_REPOSITORY}}@${{GITHUB_REF_NAME}}
+        run: GOPROXY=proxy.golang.org go list -m github.com/${{ github.repository }}@${{ github.ref_name }}
