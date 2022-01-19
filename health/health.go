@@ -111,15 +111,19 @@ func (h *Health) runChecker(checker *healthIndicator) {
 // RunCheckers runs all the health checks, one every frequency/count seconds.
 func (h *Health) RunCheckers(frequency int) {
 	nextIndex := 0
-	h.run = true
+	firstPass := true // used to ensure we scan fast on first start
 
 	h.Lock()
+	h.run = true
 	count := len(h.Checks) + 1 // ensure we are at least 1
 	h.Unlock()
 
 	for {
 		// ensure we sleep while not locked.
 		sleepDuration := time.Duration(frequency) * time.Second / time.Duration(count)
+		if firstPass {
+			sleepDuration = time.Duration(10) * time.Millisecond
+		}
 		time.Sleep(sleepDuration)
 
 		// locked while manitulating things and calling healthcheck
@@ -131,6 +135,7 @@ func (h *Health) RunCheckers(frequency int) {
 		}
 		if nextIndex >= len(h.Checks) {
 			nextIndex = 0
+			firstPass = false
 		}
 		h.Unlock()
 		h.runChecker(&h.Checks[nextIndex])
