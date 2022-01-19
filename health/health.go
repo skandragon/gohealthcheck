@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package main
+package health
 
 import (
 	"encoding/json"
@@ -25,13 +25,13 @@ import (
 	"time"
 )
 
-// HealthChecker is an interface that defines a Check() function.  This Check()
+// Checker is an interface that defines a Check() function.  This Check()
 // will be called periorically from a goproc, so if any external resources
 // need to be locked, it must handle this correctly.
 // It should return an error if the check fails, where the contents of the
 // error will be included in the health indicator's JSON.
 // Return nil to indicate success.
-type HealthChecker interface {
+type Checker interface {
 	Check() error
 }
 
@@ -46,7 +46,7 @@ type healthIndicator struct {
 	ObserveOnly bool   `json:"observeOnly,omitempty"`
 	LastChecked uint64 `json:"lastChecked,omitempty"`
 
-	checker HealthChecker
+	checker Checker
 }
 
 // Health holds state for the current health checker.
@@ -70,7 +70,7 @@ func removeChecker(s []healthIndicator, i int) []healthIndicator {
 }
 
 // AddCheck adds a new checker.  For HTTP checkers, use health.HTTPChecker(url).
-func (h *Health) AddCheck(service string, observeOnly bool, checker HealthChecker) {
+func (h *Health) AddCheck(service string, observeOnly bool, checker Checker) {
 	h.Lock()
 	defer h.Unlock()
 	for _, c := range h.Checks {
@@ -158,7 +158,7 @@ func (h *Health) StopCheckers() {
 // HTTPChecker adds returns a HealthChecker that will
 // poll the provided URL, and use any http error
 // or status code to indicate success or failure.
-func (h *Health) HTTPChecker(url string) HealthChecker {
+func (h *Health) HTTPChecker(url string) Checker {
 	return &httpChecker{url: url}
 }
 
