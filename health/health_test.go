@@ -42,7 +42,7 @@ func resetCheckers() {
 }
 
 func Test_Health_callsChecker(t *testing.T) {
-	h := makeHealth()
+	h := MakeHealth()
 	resetCheckers()
 
 	h.AddCheck("test", false, &successChecker)

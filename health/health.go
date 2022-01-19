@@ -49,7 +49,8 @@ type healthIndicator struct {
 	checker HealthChecker
 }
 
-type health struct {
+// Health holds state for the current health checker.
+type Health struct {
 	sync.Mutex
 	run bool
 
@@ -58,8 +59,9 @@ type health struct {
 	Checks []healthIndicator `json:"checks,omitempty"`
 }
 
-func makeHealth() *health {
-	return &health{}
+// MakeHealth will return a new, empty health checker.
+func MakeHealth() *Health {
+	return &Health{}
 }
 
 func removeChecker(s []healthIndicator, i int) []healthIndicator {
@@ -68,7 +70,7 @@ func removeChecker(s []healthIndicator, i int) []healthIndicator {
 }
 
 // AddCheck adds a new checker.  For HTTP checkers, use health.HTTPChecker(url).
-func (h *health) AddCheck(service string, observeOnly bool, checker HealthChecker) {
+func (h *Health) AddCheck(service string, observeOnly bool, checker HealthChecker) {
 	h.Lock()
 	defer h.Unlock()
 	for _, c := range h.Checks {
@@ -82,7 +84,7 @@ func (h *health) AddCheck(service string, observeOnly bool, checker HealthChecke
 }
 
 // RemoveCheck removes a checker.  This will eventually converge in the output.
-func (h *health) RemoveCheck(service string) {
+func (h *Health) RemoveCheck(service string) {
 	h.Lock()
 	defer h.Unlock()
 	for idx, c := range h.Checks {
@@ -94,7 +96,7 @@ func (h *health) RemoveCheck(service string) {
 }
 
 // This is called while (h) is unlocked.
-func (h *health) runChecker(checker *healthIndicator) {
+func (h *Health) runChecker(checker *healthIndicator) {
 	err := checker.checker.Check()
 	if err == nil {
 		checker.Healthy = true
@@ -107,7 +109,7 @@ func (h *health) runChecker(checker *healthIndicator) {
 }
 
 // RunCheckers runs all the health checks, one every frequency/count seconds.
-func (h *health) RunCheckers(frequency int) {
+func (h *Health) RunCheckers(frequency int) {
 	nextIndex := 0
 
 	h.Lock()
@@ -147,34 +149,39 @@ func (h *health) RunCheckers(frequency int) {
 }
 
 // StopCheckers will stop running RunCheckers()
-func (h *health) StopCheckers() {
+func (h *Health) StopCheckers() {
 	h.Lock()
 	defer h.Unlock()
 	h.run = false
 }
 
-func (h *health) HTTPChecker(url string) HealthChecker {
+// HTTPChecker adds returns a HealthChecker that will
+// poll the provided URL, and use any http error
+// or status code to indicate success or failure.
+func (h *Health) HTTPChecker(url string) HealthChecker {
 	return &httpChecker{url: url}
 }
 
-// HTTP handler which returns 200 if all critical checks pass, or 500 if not.
-func (h *health) HTTPHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	h.Lock()
-	data, err := json.Marshal(h)
-	healthy := h.Healthy
-	h.Unlock()
-	if err != nil {
-		w.WriteHeader(500)
-		log.Printf("Healthcheck HTTPHandler: %v", err)
-		return
+// HTTPHandler which returns 200 if all critical checks pass, or 500 if not.
+func (h *Health) HTTPHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		h.Lock()
+		data, err := json.Marshal(h)
+		healthy := h.Healthy
+		h.Unlock()
+		if err != nil {
+			w.WriteHeader(500)
+			log.Printf("Healthcheck HTTPHandler: %v", err)
+			return
+		}
+		if healthy {
+			w.WriteHeader(200)
+		} else {
+			w.WriteHeader(418)
+		}
+		w.Write(data)
 	}
-	if healthy {
-		w.WriteHeader(200)
-	} else {
-		w.WriteHeader(418)
-	}
-	w.Write(data)
 }
 
 // Check implements the HealthChecker interface, using a HTTP fetch.
