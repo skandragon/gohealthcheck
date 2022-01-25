@@ -138,9 +138,11 @@ func (h *Health) RunCheckers(frequency int) {
 			nextIndex = 0
 			firstPass = false
 		}
-		h.Unlock()
-		h.runChecker(&h.Checks[nextIndex])
-		h.Lock()
+		if len(h.Checks) > 0 {
+			h.Unlock()
+			h.runChecker(&h.Checks[nextIndex])
+			h.Lock()
+		}
 		nextIndex++
 
 		// Now, check all statuses and compute the global status
