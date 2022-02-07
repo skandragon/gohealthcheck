@@ -189,7 +189,13 @@ func (h *Health) HTTPHandler() http.HandlerFunc {
 		} else {
 			w.WriteHeader(418)
 		}
-		w.Write(data)
+		written, err := w.Write(data)
+		if err != nil {
+			log.Printf("when writing body: %v", err)
+		}
+		if written != len(data) {
+			log.Printf("unable to write entire body, %d of %d bytes", written, len(data))
+		}
 	}
 }
 
@@ -201,7 +207,10 @@ func (hc *httpChecker) Check() error {
 	if err != nil {
 		return err
 	}
-	io.Copy(io.Discard, resp.Body)
+	_, err = io.Copy(io.Discard, resp.Body)
+	if err != nil {
+		return err
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		return nil
