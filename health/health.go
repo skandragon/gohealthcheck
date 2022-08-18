@@ -37,7 +37,8 @@ type Checker interface {
 }
 
 type httpChecker struct {
-	url string
+	url        string
+	httpClient *http.Client
 }
 
 type healthIndicator struct {
@@ -53,16 +54,23 @@ type healthIndicator struct {
 // Health holds state for the current health checker.
 type Health struct {
 	sync.Mutex
-	run bool
+	run        bool
+	httpClient *http.Client
 
-	Healthy bool `json:"healthy,omitempty"`
-
-	Checks []healthIndicator `json:"checks,omitempty"`
+	Healthy bool              `json:"healthy,omitempty"`
+	Checks  []healthIndicator `json:"checks,omitempty"`
 }
 
 // MakeHealth will return a new, empty health checker.
 func MakeHealth() *Health {
-	return &Health{}
+	return &Health{
+		httpClient: http.DefaultClient,
+	}
+}
+
+func (h *Health) WithHTTPClient(client *http.Client) *Health {
+	h.httpClient = client
+	return h
 }
 
 func removeChecker(s []healthIndicator, i int) []healthIndicator {
@@ -168,7 +176,7 @@ func (h *Health) StopCheckers() {
 // poll the provided URL, and use any http error
 // or status code to indicate success or failure.
 func (h *Health) HTTPChecker(url string) Checker {
-	return &httpChecker{url: url}
+	return &httpChecker{url: url, httpClient: h.httpClient}
 }
 
 // HTTPHandler which returns 200 if all critical checks pass, or 500 if not.
@@ -203,7 +211,8 @@ func (h *Health) HTTPHandler() http.HandlerFunc {
 // Any status code between 200 and 399 indicates success, any other
 // indicates a failure.
 func (hc *httpChecker) Check() error {
-	resp, err := http.Get(hc.url)
+	client := hc.httpClient
+	resp, err := client.Get(hc.url)
 	if err != nil {
 		return err
 	}
